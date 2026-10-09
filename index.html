@@ -36,7 +36,7 @@
   .top { padding-top:calc(18px + env(safe-area-inset-top)) !important; }
   .top { background:linear-gradient(135deg,var(--pri),var(--pri2)); color:#fff;
     padding:18px 16px 70px; border-radius:0 0 28px 28px; }
-  .top.foto { background-size:cover; background-position:center 30%; }
+  .top.foto { background-size:cover; background-position:center; }
   .top.foto.tall { padding-top:22px; min-height:330px; display:flex; flex-direction:column; justify-content:space-between; padding-bottom:76px; }
   .top.foto .bar, .top.foto .month { width:100%; text-shadow:0 1px 6px rgba(0,0,0,.45); }
   .fotoprev { width:100%; aspect-ratio:16/10; border-radius:14px; background:var(--chip) center/cover no-repeat;
@@ -146,6 +146,21 @@
   .masuk .logo { width:72px; height:72px; border-radius:22px; margin:0 auto 14px; display:grid; place-items:center; font-size:36px;
     background:linear-gradient(135deg,var(--pri),var(--pri2)); }
   .masuk h2 { text-align:center; margin:0 0 4px; } .masuk p.mut { text-align:center; }
+  .editor { position:fixed; inset:0; z-index:40; background:#000; display:none; flex-direction:column;
+    padding:calc(12px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); color:#fff; }
+  .editor.on { display:flex; }
+  .editor h3 { color:#fff; margin:4px 0 10px; }
+  .editor .bingkai { position:relative; width:100%; max-width:560px; margin:0 auto; aspect-ratio:390/330; border-radius:16px;
+    overflow:hidden; outline:2px solid rgba(255,255,255,.8); touch-action:none; cursor:grab; background:#111; }
+  .editor canvas { width:100%; height:100%; display:block; }
+  .editor .petunjuk { text-align:center; font-size:12px; color:#bbb; margin:8px 0 4px; }
+  .editor .ctl { max-width:560px; width:100%; margin:6px auto 0; }
+  .editor .ctl label { color:#bbb; margin:10px 0 4px; display:flex; justify-content:space-between; }
+  .editor input[type=range] { width:100%; accent-color:#14b8a6; }
+  .editor .putar { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px; }
+  .editor .putar button { border:0; border-radius:12px; padding:12px; background:#222; color:#fff; font-size:15px; }
+  .editor .aksi { display:grid; grid-template-columns:1fr 2fr; gap:10px; margin:auto auto 0; max-width:560px; width:100%; padding-top:14px; }
+  .editor .aksi .btn { margin-top:0; }
   section { display:none; } section.on { display:block; }
 </style>
 </head>
@@ -264,6 +279,17 @@
     <p class="mut" id="m-info" style="margin-bottom:0"></p>
   </div>
 </div></div>
+<div class="editor" id="editor">
+  <h3>Atur foto latar</h3>
+  <div class="bingkai" id="ed-bingkai"><canvas id="ed-kanvas"></canvas></div>
+  <div class="petunjuk">Geser foto dengan jari · cubit dua jari untuk zoom</div>
+  <div class="ctl">
+    <label>Zoom <span id="ed-zoom-v">100%</span></label><input type="range" id="ed-zoom" min="100" max="400" value="100">
+    <label>Kemiringan <span id="ed-miring-v">0°</span></label><input type="range" id="ed-miring" min="-30" max="30" value="0">
+    <div class="putar"><button id="ed-kiri">↺ 90°</button><button id="ed-reset">Atur ulang</button><button id="ed-kanan">↻ 90°</button></div>
+  </div>
+  <div class="aksi"><button class="btn ghost" id="ed-batal">Batal</button><button class="btn" id="ed-simpan">Simpan foto</button></div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -587,13 +613,77 @@ function kecilkan(file, maxPx, q0) {
     img.src = u;
   });
 }
-$('b-foto').onclick = () => $('foto-file').click();
-$('foto-file').onchange = async e => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  $('b-foto').disabled = true; toast('⏳ Mengunggah foto…');
-  try { const d = await kecilkan(f); await call('simpanFoto', d); applyFoto(d); try { localStorage.setItem('foto', d); localStorage.removeItem('fotoVer'); } catch (e) {} toast('✅ Foto tersimpan'); }
-  catch (err) { toast('⚠️ ' + (err.message || err)); } finally { $('b-foto').disabled = false; }
+/* ---------- Editor foto latar: geser, zoom, putar ---------- */
+// Bingkai editor = rasio header Beranda (390:330), jadi hasil potongan tampil persis seperti di editor.
+const ED = { img: null, x: 0, y: 0, zoom: 1, rot: 0, miring: 0 };
+const OUT_W = 1200, OUT_H = Math.round(1200 * 330 / 390);
+function edSkalaDasar(w, h) {
+  // Skala minimal agar foto (setelah diputar) menutupi seluruh bingkai.
+  const r = (ED.rot + ED.miring) * Math.PI / 180, c = Math.abs(Math.cos(r)), s = Math.abs(Math.sin(r));
+  const iw = ED.img.width, ih = ED.img.height;
+  return Math.max((w * c + h * s) / iw, (w * s + h * c) / ih);
+}
+function edGambar(ctx, w, h, k) {
+  // k = faktor dari ukuran bingkai di layar ke ukuran kanvas tujuan.
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, w, h);
+  if (!ED.img) return;
+  const sk = edSkalaDasar(w, h) * ED.zoom;
+  ctx.save();
+  ctx.translate(w / 2 + ED.x * k, h / 2 + ED.y * k);
+  ctx.rotate((ED.rot + ED.miring) * Math.PI / 180);
+  ctx.drawImage(ED.img, -ED.img.width * sk / 2, -ED.img.height * sk / 2, ED.img.width * sk, ED.img.height * sk);
+  ctx.restore();
+}
+function edRender() {
+  const cv = $('ed-kanvas'), box = $('ed-bingkai').getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
+  edGambar(cv.getContext('2d'), cv.width, cv.height, dpr);
+  $('ed-zoom').value = Math.round(ED.zoom * 100); $('ed-zoom-v').textContent = Math.round(ED.zoom * 100) + '%';
+  $('ed-miring').value = ED.miring; $('ed-miring-v').textContent = ED.miring + '°';
+}
+function edReset() { ED.x = 0; ED.y = 0; ED.zoom = 1; ED.rot = 0; ED.miring = 0; edRender(); }
+function edBuka(file) {
+  const img = new Image(), u = URL.createObjectURL(file);
+  img.onload = () => { URL.revokeObjectURL(u); ED.img = img; $('editor').classList.add('on'); requestAnimationFrame(edReset); };
+  img.onerror = () => toast('⚠️ Foto tidak bisa dibaca. Coba foto lain.');
+  img.src = u;
+}
+// Geser (satu jari / mouse) & cubit (dua jari).
+const edJari = new Map(); let edCubit = null;
+$('ed-bingkai').addEventListener('pointerdown', e => { $('ed-bingkai').setPointerCapture(e.pointerId); edJari.set(e.pointerId, { x: e.clientX, y: e.clientY }); edCubit = null; });
+$('ed-bingkai').addEventListener('pointermove', e => {
+  if (!edJari.has(e.pointerId)) return;
+  const lama = edJari.get(e.pointerId); edJari.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (edJari.size === 1) { ED.x += e.clientX - lama.x; ED.y += e.clientY - lama.y; }
+  else if (edJari.size === 2) {
+    const [a, b] = [...edJari.values()], jarak = Math.hypot(a.x - b.x, a.y - b.y);
+    if (edCubit) ED.zoom = Math.min(4, Math.max(1, ED.zoom * jarak / edCubit));
+    edCubit = jarak;
+  }
+  edRender();
+});
+['pointerup', 'pointercancel'].forEach(t => $('ed-bingkai').addEventListener(t, e => { edJari.delete(e.pointerId); edCubit = null; }));
+$('ed-zoom').oninput = e => { ED.zoom = e.target.value / 100; edRender(); };
+$('ed-miring').oninput = e => { ED.miring = Number(e.target.value); edRender(); };
+$('ed-kiri').onclick = () => { ED.rot = (ED.rot - 90) % 360; edRender(); };
+$('ed-kanan').onclick = () => { ED.rot = (ED.rot + 90) % 360; edRender(); };
+$('ed-reset').onclick = edReset;
+$('ed-batal').onclick = () => { $('editor').classList.remove('on'); ED.img = null; };
+$('ed-simpan').onclick = async () => {
+  const box = $('ed-bingkai').getBoundingClientRect();
+  const cv = document.createElement('canvas'); cv.width = OUT_W; cv.height = OUT_H;
+  edGambar(cv.getContext('2d'), OUT_W, OUT_H, OUT_W / box.width);
+  let q = 0.85, d = cv.toDataURL('image/jpeg', q);
+  while (d.length > 1400000 && q > 0.3) { q -= 0.1; d = cv.toDataURL('image/jpeg', q); }
+  $('ed-simpan').disabled = true; $('ed-simpan').textContent = '⏳ Menyimpan…';
+  try {
+    await call('simpanFoto', d); applyFoto(d);
+    try { localStorage.setItem('foto', d); localStorage.removeItem('fotoVer'); } catch (e) {}
+    $('editor').classList.remove('on'); ED.img = null; toast('✅ Foto tersimpan');
+  } catch (err) {} finally { $('ed-simpan').disabled = false; $('ed-simpan').textContent = 'Simpan foto'; }
 };
+$('b-foto').onclick = () => $('foto-file').click();
+$('foto-file').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) edBuka(f); };
 $('b-foto-del').onclick = async () => { if (confirm('Hapus foto latar?')) { await call('hapusFoto'); applyFoto(''); try { localStorage.removeItem('foto'); localStorage.removeItem('fotoVer'); } catch (e) {} toast('Foto dihapus'); } };
 
 function pasangData(d, awal) {
