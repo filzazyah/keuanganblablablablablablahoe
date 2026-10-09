@@ -306,10 +306,38 @@ async function call(fn, ...args) {
   if (!res.ok) { toast('⚠️ ' + res.error); throw new Error(res.error); }
   return res.data;
 }
-async function data(force) {
-  if (!force && CACHE[bulan]) return CACHE[bulan];
-  return CACHE[bulan] = await call('getBeranda', bulan);
+async function data(force) { return ambil(bulan, force); }
+
+// Data per bulan: dari memori -> dari simpanan HP (lalu diperbarui diam-diam) -> dari server.
+const PENDING = {};
+function ambil(b, force) {
+  if (!force && CACHE[b]) return Promise.resolve(CACHE[b]);
+  if (force || !PENDING[b]) {
+    PENDING[b] = call('getBeranda', b).then(v => {
+      const dariHp = CACHE[b] && CACHE[b].__lokal;
+      CACHE[b] = v; delete PENDING[b]; simpanBulan(b, v);
+      if (dariHp && b === bulan) RENDER[tab]().catch(() => {});
+      return v;
+    }, e => { delete PENDING[b]; throw e; });
+  }
+  if (!force) {
+    const l = LS.get('bln:' + b);
+    if (l && l.lap) { l.__lokal = true; CACHE[b] = l; return Promise.resolve(l); }
+  }
+  return PENDING[b];
 }
+function simpanBulan(b, v) {
+  const idx = (LS.get('blnIdx') || []).filter(x => x !== b);
+  idx.push(b);
+  while (idx.length > 12) { try { localStorage.removeItem('bln:' + idx.shift()); } catch (e) {} }
+  LS.set('bln:' + b, v); LS.set('blnIdx', idx);
+}
+function hapusBulanLokal() {
+  (LS.get('blnIdx') || []).forEach(b => { try { localStorage.removeItem('bln:' + b); } catch (e) {} });
+  LS.set('blnIdx', []);
+}
+// Ambil duluan bulan di sekitar bulan yang sedang dibuka, supaya geser bulan langsung tampil.
+function ambilSekitar(b) { [-1, 1, -2].forEach(d => { const x = shift(b, d); if (!CACHE[x] && !PENDING[x]) ambil(x).catch(() => {}); }); }
 // Simpanan lokal di HP: tampilkan data terakhir seketika, lalu perbarui dari server.
 const LS = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
@@ -421,9 +449,9 @@ function go(t) {
   window.scrollTo(0, 0);
   RENDER[t]().catch(() => {});
 }
-function setMonth(b) { bulan = b; geserBulan = true; $('m-lbl').textContent = labelBulan(b); RENDER[tab]().catch(() => {}); }
+function setMonth(b) { bulan = b; geserBulan = true; $('m-lbl').textContent = labelBulan(b); RENDER[tab]().then(() => ambilSekitar(b)).catch(() => {}); }
 function refresh() {
-  CACHE = {}; TOTAL = null;
+  CACHE = {}; TOTAL = null; hapusBulanLokal();
   RENDER[tab](true).then(() => { if (D && bulan === D.bulanIni && CACHE[bulan]) LS.set('snap', { D, awal: CACHE[bulan] }); }).catch(() => {});
 }
 
@@ -572,8 +600,8 @@ function pasangData(d, awal) {
   if (!bulan || !geserBulan) bulan = D.bulanIni;
   $('m-lbl').textContent = labelBulan(bulan);
   CACHE = {}; TOTAL = null;
-  if (awal) CACHE[D.bulanIni] = awal;
-  RENDER[tab]().catch(() => {});
+  if (awal) { CACHE[D.bulanIni] = awal; simpanBulan(D.bulanIni, awal); }
+  RENDER[tab]().then(() => ambilSekitar(bulan)).catch(() => {});
 }
 
 /* ---------- Masuk / daftar / ganti PIN ---------- */
@@ -647,6 +675,14 @@ async function init() {
     }).catch(() => {});
   }
 }
+// Usap kiri/kanan untuk ganti bulan.
+let usap = null;
+document.querySelector('.wrap').addEventListener('touchstart', e => { if (e.touches.length === 1) usap = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive:true });
+document.querySelector('.wrap').addEventListener('touchend', e => {
+  if (!usap || tab === 'atur' || document.body.classList.contains('open')) { usap = null; return; }
+  const dx = e.changedTouches[0].clientX - usap.x, dy = e.changedTouches[0].clientY - usap.y; usap = null;
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) setMonth(shift(bulan, dx < 0 ? 1 : -1));
+}, { passive:true });
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive:false });
 init();
