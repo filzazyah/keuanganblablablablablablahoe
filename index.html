@@ -439,17 +439,22 @@ async function renderTotal() {
 }
 const RENDER = { home:renderHome, riwayat:renderRiwayat, laporan:renderLaporan, atur:async () => {} };
 
-function go(t) {
+// Ingat halaman & bulan terakhir selama aplikasi terbuka, supaya refresh tidak kembali ke Beranda.
+function ingatPosisi() { try { sessionStorage.setItem('posisi', JSON.stringify({ tab, bulan })); } catch (e) {} }
+function tampilTab(t) {
   tab = t;
   $('top').classList.toggle('tall', t === 'home');
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === 's-' + t));
   document.querySelectorAll('nav [data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === t));
   $('monthbar').style.visibility = t === 'atur' ? 'hidden' : 'visible';
   $('ttl').textContent = { home:'Keuangan Keluarga', riwayat:'Riwayat', laporan:'Laporan', atur:'Pengaturan' }[t];
+}
+function go(t) {
+  tampilTab(t); ingatPosisi();
   window.scrollTo(0, 0);
   RENDER[t]().catch(() => {});
 }
-function setMonth(b) { bulan = b; geserBulan = true; $('m-lbl').textContent = labelBulan(b); RENDER[tab]().then(() => ambilSekitar(b)).catch(() => {}); }
+function setMonth(b) { bulan = b; geserBulan = true; ingatPosisi(); $('m-lbl').textContent = labelBulan(b); RENDER[tab]().then(() => ambilSekitar(b)).catch(() => {}); }
 function refresh() {
   CACHE = {}; TOTAL = null; hapusBulanLokal();
   RENDER[tab](true).then(() => { if (D && bulan === D.bulanIni && CACHE[bulan]) LS.set('snap', { D, awal: CACHE[bulan] }); }).catch(() => {});
@@ -657,6 +662,12 @@ $('b-keluar').onclick = async () => {
 
 async function init() {
   if (!TOKEN()) { bukaMasuk('masuk'); return; }
+  // Pulihkan halaman & bulan sebelum refresh.
+  try {
+    const pos = JSON.parse(sessionStorage.getItem('posisi') || 'null');
+    if (pos && RENDER[pos.tab]) tampilTab(pos.tab);
+    if (pos && /^\d{4}-\d{2}$/.test(pos.bulan || '')) { bulan = pos.bulan; geserBulan = true; }
+  } catch (e) {}
   // 1) Seketika: tampilkan data & foto terakhir yang tersimpan di HP ini.
   const snap = LS.get('snap');
   if (snap && snap.D && snap.awal && snap.awal.lap && snap.awal.lap.arusKas && 'bersih' in snap.awal.lap.arusKas) pasangData(snap.D, snap.awal);
