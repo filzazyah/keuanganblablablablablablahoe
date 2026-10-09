@@ -253,9 +253,7 @@
   <h2 id="m-judul">Keuangan Keluarga</h2>
   <p class="mut" id="m-sub">Masuk dengan nama dan PIN kamu.</p>
   <div class="card">
-    <div class="seg" id="m-seg" style="grid-template-columns:1fr 1fr"><button data-m="masuk" class="on">Masuk</button><button data-m="daftar">Pertama kali</button></div>
-    <label>Nama</label><input class="field" id="m-nama" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="nama panggilan">
-    <div id="m-w-kode" style="display:none"><label>Kode awal (dari Apps Script)</label><input class="field" id="m-kode" autocapitalize="characters" placeholder="8 huruf/angka"></div>
+        <label>Nama</label><input class="field" id="m-nama" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="nama panggilan">
     <div id="m-w-pinlama" style="display:none"><label>PIN lama</label><input class="field" id="m-pinlama" type="password" inputmode="numeric"></div>
     <label id="m-l-pin">PIN</label><input class="field" id="m-pin" type="password" inputmode="numeric" autocomplete="current-password">
     <div id="m-w-pin2" style="display:none"><label>Ulangi PIN baru</label><input class="field" id="m-pin2" type="password" inputmode="numeric"></div>
@@ -582,24 +580,22 @@ function bukaMasuk(mode) {
   modeMasuk = mode;
   const gp = mode === 'ganti';
   $('masuk').classList.add('on');
-  $('m-seg').style.display = gp ? 'none' : '';
-  document.querySelectorAll('#m-seg button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
-  $('m-judul').textContent = gp ? 'Ganti PIN' : mode === 'daftar' ? 'Pertama kali' : 'Keuangan Keluarga';
-  $('m-sub').textContent = gp ? 'Buat PIN baru minimal 6 karakter.' : mode === 'daftar'
-    ? 'Isi nama kamu, kode awal, lalu buat PIN pribadi (minimal 6).' : 'Masuk dengan nama dan PIN kamu.';
-  $('m-nama').parentElement && ($('m-nama').style.display = gp ? 'none' : '');
-  $('m-nama').previousElementSibling.style.display = gp ? 'none' : '';
-  $('m-w-kode').style.display = mode === 'daftar' ? '' : 'none';
+  const baru = mode === 'daftar';
+  $('m-judul').textContent = gp ? 'Ganti PIN' : baru ? 'Buat PIN baru' : 'Keuangan Keluarga';
+  $('m-sub').textContent = gp ? 'Buat PIN baru minimal 6 karakter.' : baru
+    ? 'Halo ' + $('m-nama').value.trim() + '! Buat PIN pribadi (minimal 6) untuk masuk berikutnya.' : 'Masuk dengan nama dan PIN kamu.';
+  $('m-nama').style.display = gp || baru ? 'none' : '';
+  $('m-nama').previousElementSibling.style.display = gp || baru ? 'none' : '';
   $('m-w-pinlama').style.display = gp ? '' : 'none';
   $('m-w-pin2').style.display = mode === 'masuk' ? 'none' : '';
   $('m-l-pin').textContent = mode === 'masuk' ? 'PIN' : 'PIN baru';
-  $('m-ok').textContent = gp ? 'Simpan PIN' : mode === 'daftar' ? 'Daftar & masuk' : 'Masuk';
-  $('m-batal').style.display = gp ? '' : 'none';
+  $('m-ok').textContent = gp ? 'Simpan PIN' : baru ? 'Simpan PIN & masuk' : 'Masuk';
+  $('m-batal').style.display = gp || baru ? '' : 'none';
   $('m-info').textContent = '';
   try { if (!$('m-nama').value) $('m-nama').value = localStorage.getItem('nama') || ''; } catch (e) {}
 }
-$('m-seg').onclick = e => { const b = e.target.closest('[data-m]'); if (b) bukaMasuk(b.dataset.m); };
-$('m-batal').onclick = () => $('masuk').classList.remove('on');
+let kodeAwal = '';
+$('m-batal').onclick = () => { if (modeMasuk === 'daftar') { kodeAwal = ''; bukaMasuk('masuk'); } else $('masuk').classList.remove('on'); };
 $('m-ok').onclick = async () => {
   const nama = $('m-nama').value.trim(), pin = $('m-pin').value, pin2 = $('m-pin2').value;
   if (modeMasuk !== 'masuk' && pin !== pin2) { $('m-info').textContent = 'PIN baru dan ulangannya tidak sama.'; return; }
@@ -607,9 +603,12 @@ $('m-ok').onclick = async () => {
   try {
     let res;
     if (modeMasuk === 'ganti') res = await kirim({ fn:'gantiPin', token: TOKEN(), pinLama: $('m-pinlama').value, pinBaru: pin });
-    else res = await kirim({ fn: modeMasuk, nama, pin, kode: $('m-kode').value });
+    else if (modeMasuk === 'daftar') res = await kirim({ fn:'daftar', nama, kode: kodeAwal, pin });
+    else res = await kirim({ fn:'masuk', nama, pin });
     if (!res.ok) { $('m-info').textContent = '⚠️ ' + res.error; return; }
-    ['m-pin', 'm-pin2', 'm-pinlama', 'm-kode'].forEach(id => $(id).value = '');
+    ['m-pin', 'm-pin2', 'm-pinlama'].forEach(id => $(id).value = '');
+    if (res.data && res.data.baru) { kodeAwal = pin; bukaMasuk('daftar'); return; }
+    kodeAwal = '';
     $('masuk').classList.remove('on');
     if (modeMasuk === 'ganti') { toast('✅ PIN diganti'); return; }
     try { localStorage.setItem('token', res.data.token); localStorage.setItem('nama', res.data.nama); } catch (e) {}
