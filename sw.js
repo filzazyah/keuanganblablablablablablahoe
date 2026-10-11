@@ -1,5 +1,5 @@
 // Simpan tampilan aplikasi di HP: dibuka seketika, lalu diperbarui diam-diam di belakang.
-const CACHE = 'keuangan-v14';
+const CACHE = 'keuangan-v15';
 const FILES = ['./', 'index.html', 'config.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
