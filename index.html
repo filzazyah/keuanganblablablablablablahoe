@@ -79,6 +79,7 @@
   .tx .mid small { color:var(--mut); font-size:12px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .tx .amt { font-weight:700; font-size:14px; text-align:right; }
   .tx .del, .tx .edit { flex:none; border:0; background:none; color:var(--mut); font-size:16px; line-height:1; padding:4px; }
+  .tx .edit { color:var(--out); }
   #l-trx .del, #h-recent .del { display:none; }
   .day { font-size:12px; color:var(--mut); font-weight:600; margin:14px 0 2px; text-transform:uppercase; letter-spacing:.4px; }
 
@@ -385,7 +386,7 @@ function txRow(t, withDel) {
   return `<div class="tx"><div class="ic">${tr ? '🔁' : icon(t.kategori)}</div>
     <div class="mid"><b>${esc(title)}</b><small>${esc(sub)}</small>${withDel && who ? `<small>oleh ${esc(who)}</small>` : ''}</div>
     <div class="amt ${cls}">${sign}${rp(t.jumlah).replace('−','')}</div>
-    ${withDel ? `<button class="edit" data-edit="${esc(t.id)}" title="Edit transaksi" aria-label="Edit transaksi">✏️</button><button class="del" data-del="${esc(t.id)}" title="Hapus" aria-label="Hapus transaksi">🗑</button>` : ''}</div>`;
+    ${withDel ? `<button class="edit" data-edit="${esc(t.id)}" title="Edit transaksi" aria-label="Edit transaksi">✎</button><button class="del" data-del="${esc(t.id)}" title="Hapus" aria-label="Hapus transaksi">🗑</button>` : ''}</div>`;
 }
 const empty = (e, m) => `<div class="empty"><span class="e">${e}</span>${m}</div>`;
 
