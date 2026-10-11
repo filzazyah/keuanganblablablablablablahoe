@@ -1,5 +1,5 @@
 // Simpan tampilan aplikasi di HP: dibuka seketika, lalu diperbarui diam-diam di belakang.
-const CACHE = 'keuangan-v17';
+const CACHE = 'keuangan-v18';
 const FILES = ['./', 'index.html', 'config.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -16,6 +16,19 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Hanya file tampilan di situs ini; panggilan ke server Apps Script tidak disentuh.
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  // Saat online, navigasi halaman memakai versi terbaru; cache jadi cadangan saat offline.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(caches.open(CACHE).then(async c => {
+      try {
+        const r = await fetch(e.request);
+        if (r.ok) c.put(e.request, r.clone());
+        return r;
+      } catch (err) {
+        return await c.match(e.request, { ignoreSearch:true }) || await c.match('./index.html') || Response.error();
+      }
+    }));
+    return;
+  }
   e.respondWith(caches.open(CACHE).then(async c => {
     const lama = await c.match(e.request, { ignoreSearch: true });
     const baru = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => lama);
