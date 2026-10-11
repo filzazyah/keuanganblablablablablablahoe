@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0d9488">
+<meta name="theme-color" content="#be185d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +16,7 @@
 <style>
   :root {
     --bg:#f3f4f8; --card:#ffffff; --tx:#111827; --mut:#6b7280; --bd:#eceef3;
-    --pri:#14b8a6; --pri2:#0f766e; --in:#059669; --out:#e11d48; --warn:#d97706;
+    --pri:#f472b6; --pri2:#be185d; --in:#059669; --out:#e11d48; --warn:#d97706;
     --chip:#f1f2f7; --shadow:0 6px 20px rgba(17,24,39,.06);
   }
   @media (prefers-color-scheme: dark) {
@@ -108,7 +108,7 @@
   nav button .e { font-size:20px; filter:grayscale(1); opacity:.7; }
   nav button.on { color:var(--pri2); font-weight:700; } nav button.on .e { filter:none; opacity:1; }
   nav .fab { width:56px; height:56px; border-radius:18px; margin:-30px auto 0; color:#fff; font-size:30px; font-weight:300;
-    background:linear-gradient(135deg,var(--pri),var(--pri2)); box-shadow:0 8px 20px rgba(13,148,136,.4); }
+    background:linear-gradient(135deg,var(--pri),var(--pri2)); box-shadow:0 8px 20px rgba(190,24,93,.35); }
 
   /* Sheet (form catat) */
   .scrim { position:fixed; inset:0; background:rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:.2s; z-index:9; }
@@ -126,7 +126,7 @@
   .chips button { border:1px solid var(--bd); background:var(--chip); border-radius:14px; padding:10px 4px; font-size:11px;
     display:flex; flex-direction:column; align-items:center; gap:4px; line-height:1.2; overflow-wrap:anywhere; }
   .chips button .e { font-size:22px; }
-  .chips button.on { border-color:var(--pri); background:rgba(13,148,136,.1); color:var(--pri2); font-weight:700; }
+  .chips button.on { border-color:var(--pri); background:rgba(244,114,182,.14); color:var(--pri2); font-weight:700; }
   .empty { text-align:center; padding:26px 10px; color:var(--mut); font-size:14px; }
   .empty .e { font-size:36px; display:block; margin-bottom:6px; }
 
@@ -140,7 +140,7 @@
   .yr { display:grid; grid-template-columns:52px 1fr; gap:4px 10px; align-items:center; font-size:12px; margin:8px 0; }
   .yr .bars { display:flex; flex-direction:column; gap:3px; }
   .yr .bars i { display:block; height:8px; border-radius:4px; min-width:2px; }
-  .scan { margin-top:12px; padding:11px; font-size:14px; border:1px dashed var(--pri); color:var(--pri2); background:rgba(13,148,136,.06); }
+  .scan { margin-top:12px; padding:11px; font-size:14px; border:1px dashed var(--pri); color:var(--pri2); background:rgba(244,114,182,.1); }
   .masuk { position:fixed; inset:0; z-index:30; background:var(--bg); display:none; overflow:auto;
     padding:calc(40px + env(safe-area-inset-top)) 16px 40px; }
   .masuk.on { display:block; }
@@ -158,7 +158,7 @@
   .editor .petunjuk { text-align:center; font-size:12px; color:#bbb; margin:8px 0 4px; }
   .editor .ctl { max-width:560px; width:100%; margin:6px auto 0; }
   .editor .ctl label { color:#bbb; margin:10px 0 4px; display:flex; justify-content:space-between; }
-  .editor input[type=range] { width:100%; accent-color:#14b8a6; }
+  .editor input[type=range] { width:100%; accent-color:#ec4899; }
   .editor .putar { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px; }
   .editor .putar button { border:0; border-radius:12px; padding:12px; background:#222; color:#fff; font-size:15px; }
   .editor .aksi { display:grid; grid-template-columns:1fr 2fr; gap:10px; margin:auto auto 0; max-width:560px; width:100%; padding-top:14px; }
@@ -298,7 +298,7 @@
 
 <script>
 const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const COLORS = ['#0d9488','#e11d48','#f59e0b','#6366f1','#0891b2','#db2777','#84cc16','#ea580c','#8b5cf6','#64748b'];
+const COLORS = ['#ec4899','#e11d48','#f59e0b','#6366f1','#0891b2','#db2777','#84cc16','#ea580c','#8b5cf6','#64748b'];
 const ICON = { 'kategori lain':'🗂️','peliharaan':'🐾','perawatan':'💅','sewa':'🏘️','tunjangan':'🏅','potongan':'✂️','perlengkapan':'🛠️','gaji':'💼','pendapatan':'👩‍💼','thr':'🎁','haji':'🕋','darurat':'🛟','tunai':'💵','bank':'🏦','wallet':'📱','bonus':'🎁','makan':'🍜','belanja':'🛒','listrik':'💡','air':'💧','internet':'📶','transport':'🚗',
   'pendidikan':'📚','sekolah':'🎒','kesehatan':'💊','cicilan':'🏦','hiburan':'🎬','sedekah':'🤲','sosial':'🤝',
   'tabungan':'🐷','investasi':'📈','pulsa':'📱','bensin':'⛽','anak':'🧸','susu':'🍼','popok':'🍼','rumah':'🏠',
@@ -640,7 +640,7 @@ $('scan-file').onchange = async e => {
 function applyFoto(url) {
   const top = $('top');
   if (url) {
-    top.style.backgroundImage = `linear-gradient(180deg,rgba(17,24,39,.45) 0%,rgba(17,24,39,.05) 40%,rgba(13,148,136,.9) 100%),url("${url}")`;
+    top.style.backgroundImage = `linear-gradient(180deg,rgba(17,24,39,.45) 0%,rgba(17,24,39,.05) 40%,rgba(190,24,93,.82) 100%),url("${url}")`;
     top.classList.add('foto');
     $('foto-prev').style.backgroundImage = `url("${url}")`; $('foto-prev').textContent = '';
   } else {
