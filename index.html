@@ -79,6 +79,8 @@
   .tx .mid small { color:var(--mut); font-size:12px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .tx .amt { font-weight:700; font-size:14px; text-align:right; }
   .tx .del { border:0; background:none; color:var(--mut); font-size:16px; padding:4px; }
+  .tx .edit { flex:none; width:36px; height:36px; border:0; border-radius:10px; background:var(--chip); color:var(--pri2); font-size:18px; line-height:1; padding:0; }
+  #l-trx .del, #h-recent .del { display:none; }
   .day { font-size:12px; color:var(--mut); font-weight:600; margin:14px 0 2px; text-transform:uppercase; letter-spacing:.4px; }
 
   .bud { margin-bottom:14px; } .bud:last-child { margin-bottom:0; }
@@ -205,6 +207,7 @@
       <button class="btn" id="b-saldo">Simpan saldo</button></div>
     <div class="card"><h3>Pemasukan per kategori</h3><div id="l-masuk"></div></div>
     <div class="card total"><h3>🏆 Total sepanjang masa</h3><div id="l-total"><div class="skel"></div><div class="skel"></div></div></div>
+    <div class="card"><h3>Transaksi bulan ini</h3><div id="l-trx"></div></div>
   </section>
 
   <!-- PENGATURAN -->
@@ -263,6 +266,7 @@
   </div>
   <label>Catatan</label><input class="field" id="f-ket" placeholder="opsional, mis. belanja mingguan">
   <button class="btn" id="b-simpan">Simpan</button>
+  <button class="btn ghost" id="b-batal-edit" style="display:none">Batal edit</button>
   <p class="mut" id="f-hint" style="text-align:center;margin-bottom:0"></p>
 </div>
 <div class="masuk" id="masuk"><div class="box">
@@ -300,6 +304,7 @@ const ICON = { 'kategori lain':'🗂️','peliharaan':'🐾','perawatan':'💅',
   'tabungan':'🐷','investasi':'📈','pulsa':'📱','bensin':'⛽','anak':'🧸','susu':'🍼','popok':'🍼','rumah':'🏠',
   'pakaian':'👕','kopi':'☕','arisan':'👥','zakat':'🤲','hadiah':'🎁','jualan':'🏪','usaha':'🏪','lainnya':'✨' };
 let D = null, jenis = 'Pengeluaran', kat = '', bulan = '', tab = 'home', CACHE = {}, geserBulan = false;
+let transaksiDiedit = null;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -381,7 +386,7 @@ function txRow(t, withDel) {
   return `<div class="tx"><div class="ic">${tr ? '🔁' : icon(t.kategori)}</div>
     <div class="mid"><b>${esc(title)}</b><small>${esc(sub)}</small>${withDel && who ? `<small>oleh ${esc(who)}</small>` : ''}</div>
     <div class="amt ${cls}">${sign}${rp(t.jumlah).replace('−','')}</div>
-    ${withDel ? `<button class="del" data-del="${esc(t.id)}" title="Hapus">🗑</button>` : ''}</div>`;
+    ${withDel ? `<button class="edit" data-edit="${esc(t.id)}" title="Edit transaksi" aria-label="Edit transaksi">✏️</button><button class="del" data-del="${esc(t.id)}" title="Hapus" aria-label="Hapus transaksi">🗑</button>` : ''}</div>`;
 }
 const empty = (e, m) => `<div class="empty"><span class="e">${e}</span>${m}</div>`;
 
@@ -409,7 +414,7 @@ async function renderHome(force) {
   $('h-saldo').className = 'big ' + (lap.surplus >= 0 ? 'in' : 'out');
   $('h-in').textContent = rpShort(lap.totalMasuk); $('h-out').textContent = rpShort(lap.totalKeluar);
   $('h-donut').innerHTML = donut(lap.pengeluaran);
-  $('h-recent').innerHTML = trx.length ? trx.slice(0, 5).map(t => txRow(t)).join('') : empty('📝', 'Belum ada transaksi. Tekan tombol + untuk mencatat.');
+  $('h-recent').innerHTML = trx.length ? trx.slice(0, 5).map(t => txRow(t, true)).join('') : empty('📝', 'Belum ada transaksi. Tekan tombol + untuk mencatat.');
 }
 async function renderRiwayat(force) {
   const { trx } = await data(force);
@@ -419,7 +424,7 @@ async function renderRiwayat(force) {
   $('r-list').innerHTML = html;
 }
 async function renderLaporan(force) {
-  const { lap: L } = await data(force);
+  const { lap: L, trx } = await data(force);
   const k = L.arusKas, N = L.neraca;
   $('l-ring').innerHTML = line('Pemasukan', L.totalMasuk) + line('Pengeluaran', L.totalKeluar) +
     `<div class="line tot"><span>${L.surplus >= 0 ? 'Sisa uang (surplus)' : 'Kekurangan (defisit)'}</span><b class="${L.surplus >= 0 ? 'in' : 'out'}">${rp(L.surplus)}</b></div>`;
@@ -439,6 +444,7 @@ async function renderLaporan(force) {
     `<div class="line tot"><span>Kekayaan bersih</span><b class="${N.kekayaanBersih >= 0 ? 'in' : 'out'}">${rp(N.kekayaanBersih)}</b></div>`;
   renderTotal().catch(() => {});
   $('l-masuk').innerHTML = L.pemasukan.length ? L.pemasukan.map(x => line(icon(x.kategori) + ' ' + esc(x.kategori), x.jumlah)).join('') : empty('💼', 'Belum ada pemasukan.');
+  $('l-trx').innerHTML = trx.length ? trx.map(t => txRow(t, true)).join('') : empty('📝', 'Belum ada transaksi di bulan ini.');
 }
 let TOTAL = null;
 async function renderTotal() {
@@ -502,7 +508,21 @@ function renderForm() {
   if (a1) $('f-akun').value = a1;
   $('f-tujuan').value = a2 && a2 !== $('f-akun').value ? a2 : (D.akun.find(a => a.nama !== $('f-akun').value) || {}).nama || '';
 }
-function openSheet() { resetScan(); $('f-tgl').value = D.hariIni; renderForm(); document.body.classList.add('open'); setTimeout(() => $('f-jumlah').focus(), 250); }
+function openSheet() {
+  transaksiDiedit = null; $('b-simpan').textContent = 'Simpan'; $('b-batal-edit').style.display = 'none';
+  $('f-jumlah').value = ''; $('f-ket').value = ''; jenis = 'Pengeluaran'; kat = '';
+  resetScan(); $('f-tgl').value = D.hariIni; renderForm(); document.body.classList.add('open');
+  setTimeout(() => $('f-jumlah').focus(), 250);
+}
+function bukaEdit(t) {
+  transaksiDiedit = t.id; jenis = t.jenis; kat = t.kategori || '';
+  resetScan(); renderForm();
+  $('f-jumlah').value = 'Rp ' + Number(t.jumlah || 0).toLocaleString('id-ID');
+  $('f-tgl').value = t.tanggal || D.hariIni; $('f-ket').value = t.keterangan || '';
+  $('f-akun').value = t.akun || ''; $('f-tujuan').value = t.akunTujuan || '';
+  $('b-simpan').textContent = 'Simpan perubahan'; $('b-batal-edit').style.display = '';
+  document.body.classList.add('open'); setTimeout(() => $('f-jumlah').focus(), 250);
+}
 function closeSheet() { document.body.classList.remove('open'); }
 
 async function simpan() {
@@ -510,9 +530,12 @@ async function simpan() {
     akun: $('f-akun').value, akunTujuan: $('f-tujuan').value, keterangan: $('f-ket').value.trim() };
   if (!t.jumlah) { toast('Isi jumlahnya dulu'); return; }
   $('b-simpan').disabled = true;
+  const editId = transaksiDiedit;
   try {
-    await call('addTransaksi', t);
-    $('f-jumlah').value = ''; $('f-ket').value = ''; closeSheet(); toast('✅ Tersimpan');
+    if (editId) await call('updateTransaksi', editId, t);
+    else await call('addTransaksi', t);
+    transaksiDiedit = null; $('b-simpan').textContent = 'Simpan'; $('b-batal-edit').style.display = 'none';
+    $('f-jumlah').value = ''; $('f-ket').value = ''; closeSheet(); toast(editId ? '✅ Perubahan tersimpan' : '✅ Tersimpan');
     if (t.tanggal.slice(0, 7) !== bulan) setMonth(t.tanggal.slice(0, 7));
     refresh();
   } catch (e) {} finally { $('b-simpan').disabled = false; }
@@ -541,8 +564,35 @@ $('f-kat').onclick = e => { const b = e.target.closest('[data-k]'); if (b) { kat
 $('f-akun').onchange = renderForm;
 $('f-jumlah').oninput = e => { const n = digits(e.target.value); e.target.value = n ? 'Rp ' + n.toLocaleString('id-ID') : ''; };
 $('b-simpan').onclick = simpan;
-$('r-list').onclick = async e => { const b = e.target.closest('[data-del]');
-  if (b && confirm('Hapus transaksi ini?')) { await call('deleteTransaksi', b.dataset.del); toast('Dihapus'); refresh(); } };
+$('b-batal-edit').onclick = () => { transaksiDiedit = null; $('b-simpan').textContent = 'Simpan'; $('b-batal-edit').style.display = 'none'; closeSheet(); };
+$('r-list').onclick = async e => {
+  const edit = e.target.closest('[data-edit]');
+  if (edit) {
+    const daftar = (CACHE[bulan] && CACHE[bulan].trx) || [];
+    const transaksi = daftar.find(t => String(t.id) === edit.dataset.edit);
+    if (transaksi) bukaEdit(transaksi);
+    else toast('Transaksi tidak ditemukan. Muat ulang riwayat lalu coba lagi.');
+    return;
+  }
+  const hapus = e.target.closest('[data-del]');
+  if (hapus && confirm('Hapus transaksi ini?')) { await call('deleteTransaksi', hapus.dataset.del); toast('Dihapus'); refresh(); }
+};
+$('l-trx').onclick = e => {
+  const edit = e.target.closest('[data-edit]');
+  if (!edit) return;
+  const daftar = (CACHE[bulan] && CACHE[bulan].trx) || [];
+  const transaksi = daftar.find(t => String(t.id) === edit.dataset.edit);
+  if (transaksi) bukaEdit(transaksi);
+  else toast('Transaksi tidak ditemukan. Muat ulang laporan lalu coba lagi.');
+};
+$('h-recent').onclick = e => {
+  const edit = e.target.closest('[data-edit]');
+  if (!edit) return;
+  const daftar = (CACHE[bulan] && CACHE[bulan].trx) || [];
+  const transaksi = daftar.find(t => String(t.id) === edit.dataset.edit);
+  if (transaksi) bukaEdit(transaksi);
+  else toast('Transaksi tidak ditemukan. Muat ulang beranda lalu coba lagi.');
+};
 $('b-pdf').onclick = () => ekspor('eksporPdf'); $('b-xlsx').onclick = () => ekspor('eksporExcel');
 $('b-akun').onclick = async () => { await call('addAkun', $('a-nama').value.trim(), $('a-tipe').value, digits($('a-saldo').value));
   toast('✅ Akun ditambah'); $('a-nama').value = ''; await init(); };
@@ -791,3 +841,4 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 </script>
 </body>
 </html>
+
