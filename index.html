@@ -383,10 +383,21 @@ function txRow(t, withDel) {
   const who = t.oleh ? t.oleh.split('@')[0] : '';
   const cls = t.jenis === 'Pemasukan' ? 'in' : t.jenis === 'Pengeluaran' ? 'out' : '';
   const sign = t.jenis === 'Pemasukan' ? '+' : t.jenis === 'Pengeluaran' ? '−' : '';
+  const tanggal = t.tanggal ? tglLabel(t.tanggal) : 'Tanggal tidak tersedia';
   return `<div class="tx"><div class="ic">${tr ? '🔁' : icon(t.kategori)}</div>
-    <div class="mid"><b>${esc(title)}</b><small>${esc(sub)}</small>${withDel && who ? `<small>oleh ${esc(who)}</small>` : ''}</div>
+    <div class="mid"><small class="tx-date">📅 ${esc(tanggal)}</small><b>${esc(title)}</b><small>${esc(sub)}</small>${withDel && who ? `<small>oleh ${esc(who)}</small>` : ''}</div>
     <div class="amt ${cls}">${sign}${rp(t.jumlah).replace('−','')}</div>
     ${withDel ? `<button class="edit" data-edit="${esc(t.id)}" title="Edit transaksi" aria-label="Edit transaksi">✎</button><button class="del" data-del="${esc(t.id)}" title="Hapus" aria-label="Hapus transaksi">🗑</button>` : ''}</div>`;
+}
+function urutTransaksiTerbaru(items) {
+  return items.map((t, i) => ({ t, i })).sort((a, b) => {
+    const tanggal = String(b.t.tanggal || '').localeCompare(String(a.t.tanggal || ''));
+    if (tanggal) return tanggal;
+    const waktuA = Date.parse(a.t.createdAt || a.t.created_at || a.t.waktu || '') || 0;
+    const waktuB = Date.parse(b.t.createdAt || b.t.created_at || b.t.waktu || '') || 0;
+    if (waktuA !== waktuB) return waktuB - waktuA;
+    return b.i - a.i;
+  }).map(x => x.t);
 }
 const empty = (e, m) => `<div class="empty"><span class="e">${e}</span>${m}</div>`;
 
@@ -414,13 +425,14 @@ async function renderHome(force) {
   $('h-saldo').className = 'big ' + (lap.surplus >= 0 ? 'in' : 'out');
   $('h-in').textContent = rpShort(lap.totalMasuk); $('h-out').textContent = rpShort(lap.totalKeluar);
   $('h-donut').innerHTML = donut(lap.pengeluaran);
-  $('h-recent').innerHTML = trx.length ? trx.slice(0, 5).map(t => txRow(t, true)).join('') : empty('📝', 'Belum ada transaksi. Tekan tombol + untuk mencatat.');
+  const terbaru = urutTransaksiTerbaru(trx);
+  $('h-recent').innerHTML = terbaru.length ? terbaru.slice(0, 5).map(t => txRow(t, true)).join('') : empty('📝', 'Belum ada transaksi. Tekan tombol + untuk mencatat.');
 }
 async function renderRiwayat(force) {
   const { trx } = await data(force);
   if (!trx.length) { $('r-list').innerHTML = empty('📝', 'Belum ada transaksi di bulan ini.'); return; }
   let html = '', last = '';
-  trx.forEach(t => { if (t.tanggal !== last) { html += `<div class="day">${tglLabel(t.tanggal)}</div>`; last = t.tanggal; } html += txRow(t, true); });
+  urutTransaksiTerbaru(trx).forEach(t => { if (t.tanggal !== last) { html += `<div class="day">${tglLabel(t.tanggal)}</div>`; last = t.tanggal; } html += txRow(t, true); });
   $('r-list').innerHTML = html;
 }
 async function renderLaporan(force) {
