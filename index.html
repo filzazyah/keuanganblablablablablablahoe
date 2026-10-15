@@ -676,7 +676,14 @@ async function prosesFileScan(e) {
       });
       if (cocokAkun.length === 1) sumberTerdeteksi = cocokAkun[0].nama;
       else if (/kartu\s?debit|debit card|mastercard|visa/.test(teksStruk)) {
-        const akunBank = D.akun.filter(a => /bank|bca|bri|bni|mandiri|btn|bsi|cimb|permata|danamon|jago|blu|seabank|maybank/i.test(a.nama));
+        // Jangan memilih akun generik "Bank" hanya karena struk memuat Mastercard/Visa.
+        // Nama bank harus tertulis eksplisit pada teks struk.
+        const akunBank = D.akun.filter(a => {
+          const n = String(a.nama || '').trim().toLocaleLowerCase('id-ID');
+          return n.length > 2 && n !== 'bank' &&
+            /bca|bri|bni|mandiri|btn|bsi|cimb|permata|danamon|jago|blu|seabank|maybank|ocbc|panin|mega|muamalat/i.test(n) &&
+            teksStruk.includes(n);
+        });
         if (akunBank.length === 1) sumberTerdeteksi = akunBank[0].nama;
       }
     }
