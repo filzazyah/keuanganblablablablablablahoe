@@ -533,10 +533,17 @@ function renderForm() {
   if (a1) $('f-akun').value = a1;
   $('f-tujuan').value = a2 && a2 !== $('f-akun').value ? a2 : (D.akun.find(a => a.nama !== $('f-akun').value) || {}).nama || '';
 }
+let sheetHistoryOpen = false;
+function bukaSheetHistory() {
+  if (sheetHistoryOpen) return;
+  sheetHistoryOpen = true;
+  history.pushState({ keuanganSheet: true }, '');
+}
 function openSheet() {
   transaksiDiedit = null; $('b-simpan').textContent = 'Simpan'; $('b-batal-edit').style.display = 'none';
   $('f-jumlah').value = ''; $('f-ket').value = ''; jenis = 'Pengeluaran'; kat = '';
   resetScan(); $('f-tgl').value = D.hariIni; renderForm(); document.body.classList.add('open');
+  bukaSheetHistory();
   setTimeout(() => $('f-jumlah').focus(), 250);
 }
 function bukaEdit(t) {
@@ -546,9 +553,21 @@ function bukaEdit(t) {
   $('f-tgl').value = t.tanggal || D.hariIni; $('f-ket').value = t.keterangan || '';
   $('f-akun').value = t.akun || ''; $('f-tujuan').value = t.akunTujuan || '';
   $('b-simpan').textContent = 'Simpan perubahan'; $('b-batal-edit').style.display = '';
-  document.body.classList.add('open'); setTimeout(() => $('f-jumlah').focus(), 250);
+  document.body.classList.add('open');
+  bukaSheetHistory();
+  setTimeout(() => $('f-jumlah').focus(), 250);
 }
-function closeSheet() { document.body.classList.remove('open'); }
+function closeSheet(fromPop = false) {
+  document.body.classList.remove('open');
+  if (sheetHistoryOpen) {
+    sheetHistoryOpen = false;
+    if (!fromPop) history.back();
+  }
+}
+window.addEventListener('popstate', () => {
+  if (document.body.classList.contains('open')) closeSheet(true);
+  else sheetHistoryOpen = false;
+});
 
 async function simpan() {
   const t = { jenis, jumlah: digits($('f-jumlah').value), tanggal: $('f-tgl').value, kategori: kat,
