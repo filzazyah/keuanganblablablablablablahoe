@@ -665,8 +665,10 @@ async function prosesFileScan(e) {
     const teksStruk = strukTeks.join(' ').toLocaleLowerCase('id-ID');
     const akunAda = nama => D.akun.find(a => String(a.nama || '').toLocaleLowerCase('id-ID') === nama);
     let sumberTerdeteksi = '';
-    if (/\bdana\b/.test(teksStruk) && D.akun.some(a => /^dana(?:\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^dana(?:\s|$)/i.test(String(a.nama || ''))).nama;
-    else if (/shopee\s?pay|shopeepay/.test(teksStruk) && D.akun.some(a => /^shopeepay(?:\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^shopeepay(?:\s|$)/i.test(String(a.nama || ''))).nama;
+    // Nama/logo dompet pada struk belum membuktikan bahwa dompet itu sumber pembayaran.
+    // Otomatis pilih e-wallet hanya jika OCR menyebutnya sebagai metode/cara pembayaran.
+    if (/(dibayar|pembayaran|metode bayar|metode pembayaran|payment method|paid with|bayar menggunakan|menggunakan)\s*(melalui|via|dengan)?\s*dana\b/.test(teksStruk) && D.akun.some(a => /^dana(?:\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^dana(?:\s|$)/i.test(String(a.nama || ''))).nama;
+    else if (/(dibayar|pembayaran|metode bayar|metode pembayaran|payment method|paid with|bayar menggunakan|menggunakan)\s*(melalui|via|dengan)?\s*shopee\s?pay\b/.test(teksStruk) && D.akun.some(a => /^shopeepay(?:\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^shopeepay(?:\s|$)/i.test(String(a.nama || ''))).nama;
     else {
       const cocokAkun = D.akun.filter(a => {
         const n = String(a.nama || '').trim().toLocaleLowerCase('id-ID');
@@ -687,7 +689,11 @@ async function prosesFileScan(e) {
     $('scan-info').innerHTML += ` · <a href="#" id="scan-reset2" style="color:var(--pri2)">ulang</a>`;
     $('scan-reset2').onclick = ev => { ev.preventDefault(); resetScan(); };
     toast(h.jumlah ? '✅ Terisi — cek dulu sebelum Simpan' : 'Total belum terbaca. Struk panjang? Tambah foto bagian bawah.');
-  } catch (err) {} finally { b.disabled = false; b.textContent = SCAN_LABEL(); }
+  } catch (err) {
+    const pesan = err && err.message ? err.message : 'Terjadi kesalahan saat membaca struk.';
+    $('scan-info').textContent = 'Scan gagal: ' + pesan + ' Coba ulang atau pilih foto yang lebih jelas.';
+    toast('❌ Scan gagal — periksa pesan di formulir');
+  } finally { b.disabled = false; b.textContent = SCAN_LABEL(); }
 }
 $('scan-file').onchange = prosesFileScan;
 $('scan-camera').onchange = prosesFileScan;
