@@ -640,7 +640,12 @@ async function prosesFileScan(e) {
     }
     const h = await call('parseStruk', strukTeks.join('\n'));
     jenis = 'Pengeluaran';
-    if (h.kategori && D.kategori.some(k => k.nama === h.kategori)) kat = h.kategori;
+    const daftarKategori = D.kategori.filter(k => k.jenis === 'Pengeluaran');
+    const namaTerbaca = String(h.kategori || '').trim().toLocaleLowerCase('id-ID');
+    const kategoriCocok = daftarKategori.find(k => String(k.nama || '').trim().toLocaleLowerCase('id-ID') === namaTerbaca);
+    const kategoriLainnya = daftarKategori.find(k => String(k.nama || '').trim().toLocaleLowerCase('id-ID') === 'lainnya');
+    // Jika kategori dari hasil scan tidak tersedia, pilih kategori Lainnya secara otomatis.
+    kat = kategoriCocok ? kategoriCocok.nama : (kategoriLainnya ? kategoriLainnya.nama : (daftarKategori[0] || {}).nama || '');
     renderForm();
     if (h.jumlah) $('f-jumlah').value = 'Rp ' + h.jumlah.toLocaleString('id-ID');
     if (h.tanggal) $('f-tgl').value = h.tanggal;
