@@ -660,7 +660,7 @@ async function prosesFileScan(e) {
     renderForm();
     if (h.jumlah) $('f-jumlah').value = 'Rp ' + h.jumlah.toLocaleString('id-ID');
     if (h.tanggal) $('f-tgl').value = h.tanggal;
-    if (h.toko && !$('f-ket').value) $('f-ket').value = h.toko;
+    if (h.toko) $('f-ket').value = h.toko;
     // Pilih sumber dana hanya jika petunjuk OCR cukup kuat; jangan menebak bank penerbit kartu.
     const teksStruk = strukTeks.join(' ').toLocaleLowerCase('id-ID');
     const akunAda = nama => D.akun.find(a => String(a.nama || '').toLocaleLowerCase('id-ID') === nama);
