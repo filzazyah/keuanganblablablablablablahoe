@@ -255,7 +255,9 @@
     <button data-j="Transfer">Transfer</button>
   </div>
   <button class="btn ghost scan" id="b-scan">📷 Scan struk — isi otomatis</button>
+  <input type="file" accept="image/*" capture="environment" id="scan-camera" style="display:none">
   <input type="file" accept="image/*" multiple id="scan-file" style="display:none">
+  <button type="button" id="b-scan-gallery" style="width:100%;border:0;background:none;color:var(--mut);font-size:12px;padding:5px">Pilih foto dari galeri</button>
   <p class="mut" id="scan-info" style="text-align:center;margin:6px 0 0"></p><a href="#" id="scan-reset" style="display:none"></a>
   <div class="amount"><input id="f-jumlah" inputmode="numeric" placeholder="Rp 0" autocomplete="off"></div>
   <div id="w-kat"><label>Kategori</label><div class="chips" id="f-kat"></div></div>
@@ -625,9 +627,10 @@ let strukTeks = [];
 const SCAN_LABEL = () => strukTeks.length
   ? `➕ Tambah foto lanjutan (bagian ${strukTeks.length + 1})` : '📷 Scan struk — isi otomatis';
 function resetScan() { strukTeks = []; $('b-scan').textContent = SCAN_LABEL(); $('scan-info').textContent = ''; }
-$('b-scan').onclick = () => $('scan-file').click();
+$('b-scan').onclick = () => $('scan-camera').click();
+$('b-scan-gallery').onclick = () => $('scan-file').click();
 $('scan-reset').onclick = e => { e.preventDefault(); resetScan(); toast('Scan diulang dari awal'); };
-$('scan-file').onchange = async e => {
+async function prosesFileScan(e) {
   const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
   const b = $('b-scan'); b.disabled = true;
   try {
@@ -646,7 +649,9 @@ $('scan-file').onchange = async e => {
     $('scan-reset2').onclick = ev => { ev.preventDefault(); resetScan(); };
     toast(h.jumlah ? '✅ Terisi — cek dulu sebelum Simpan' : 'Total belum terbaca. Struk panjang? Tambah foto bagian bawah.');
   } catch (err) {} finally { b.disabled = false; b.textContent = SCAN_LABEL(); }
-};
+}
+$('scan-file').onchange = prosesFileScan;
+$('scan-camera').onchange = prosesFileScan;
 
 /* ---------- Foto latar ---------- */
 function applyFoto(url) {
