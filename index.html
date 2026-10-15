@@ -511,12 +511,23 @@ function renderForm() {
   document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.j === jenis));
   const tr = jenis === 'Transfer';
   $('w-kat').style.display = tr ? 'none' : ''; $('w-tujuan').style.display = tr ? '' : 'none';
-  $('l-akun').textContent = jenis === 'Pemasukan' ? 'Masuk ke akun' : 'Dari akun';
+  $('l-akun').textContent = jenis === 'Pemasukan' ? 'Sumber dana masuk' : (tr ? 'Akun asal' : 'Sumber dana');
   $('f-hint').textContent = tr ? 'Contoh: menabung = Bank → Tabungan Haji. Tarik tunai ATM = Bank → Tunai.' : '';
   const list = D.kategori.filter(k => k.jenis === (jenis === 'Pemasukan' ? 'Pemasukan' : 'Pengeluaran'));
   if (!list.some(k => k.nama === kat)) kat = list.length ? list[0].nama : '';
   $('f-kat').innerHTML = list.map(k => `<button data-k="${esc(k.nama)}" class="${k.nama === kat ? 'on' : ''}"><span class="e">${icon(k.nama)}</span>${esc(k.nama)}</button>`).join('');
-  const akun = D.akun.map(a => `<option>${esc(a.nama)}</option>`).join('');
+  // Urutkan sumber dana: Tunai, Bank, DANA, ShopeePay, e-wallet lain, lalu akun lain.
+  const prioritasAkun = n => {
+    const v = String(n || '').toLocaleLowerCase('id-ID');
+    if (v === 'tunai' || v.includes('cash')) return 0;
+    if (v === 'bank' || /bca|bri|bni|mandiri|btn|bsi|cimb|permata|danamon|jago|blu|seabank|maybank|bank/.test(v)) return 1;
+    if (v === 'dana') return 2;
+    if (v === 'shopeepay') return 3;
+    if (/e.?wallet|gopay|ovo|linkaja|sakuku|isaku/.test(v)) return 4;
+    return 5;
+  };
+  const akunTerurut = [...D.akun].sort((a, b) => prioritasAkun(a.nama) - prioritasAkun(b.nama) || String(a.nama).localeCompare(String(b.nama), 'id'));
+  const akun = akunTerurut.map(a => `<option>${esc(a.nama)}</option>`).join('');
   const a1 = $('f-akun').value, a2 = $('f-tujuan').value;
   $('f-akun').innerHTML = akun; $('f-tujuan').innerHTML = akun;
   if (a1) $('f-akun').value = a1;
@@ -650,7 +661,30 @@ async function prosesFileScan(e) {
     if (h.jumlah) $('f-jumlah').value = 'Rp ' + h.jumlah.toLocaleString('id-ID');
     if (h.tanggal) $('f-tgl').value = h.tanggal;
     if (h.toko && !$('f-ket').value) $('f-ket').value = h.toko;
-    $('scan-info').innerHTML = `${strukTeks.length} foto terbaca · <a href="#" id="scan-reset2" style="color:var(--pri2)">ulang</a>`;
+    // Pilih sumber dana hanya jika petunjuk OCR cukup kuat; jangan menebak bank penerbit kartu.
+    const teksStruk = strukTeks.join(' ').toLocaleLowerCase('id-ID');
+    const akunAda = nama => D.akun.find(a => String(a.nama || '').toLocaleLowerCase('id-ID') === nama);
+    let sumberTerdeteksi = '';
+    if (/\\bdana\\b/.test(teksStruk) && akunAda('dana')) sumberTerdeteksi = akunAda('dana').nama;
+    else if (/shopee\\s?pay|shopeepay/.test(teksStruk) && akunAda('shopeepay')) sumberTerdeteksi = akunAda('shopeepay').nama;
+    else {
+      const cocokAkun = D.akun.filter(a => {
+        const n = String(a.nama || '').trim().toLocaleLowerCase('id-ID');
+        return n.length >= 3 && !['tunai', 'cash', 'bank', 'e-wallet', 'ewallet'].includes(n) && teksStruk.includes(n);
+      });
+      if (cocokAkun.length === 1) sumberTerdeteksi = cocokAkun[0].nama;
+      else if (/kartu\\s?debit|debit card|mastercard|visa/.test(teksStruk)) {
+        const akunBank = D.akun.filter(a => /bank|bca|bri|bni|mandiri|btn|bsi|cimb|permata|danamon|jago|blu|seabank|maybank/i.test(a.nama));
+        if (akunBank.length === 1) sumberTerdeteksi = akunBank[0].nama;
+      }
+    }
+    if (sumberTerdeteksi) {
+      $('f-akun').value = sumberTerdeteksi;
+      $('scan-info').textContent = 'Sumber dana terdeteksi: ' + sumberTerdeteksi + ' · cek sebelum simpan.';
+    } else {
+      $('scan-info').textContent = 'Nominal dan kategori terisi. Sumber dana belum pasti — pilih sendiri sebelum simpan.';
+    }
+    $('scan-info').innerHTML += ` · <a href="#" id="scan-reset2" style="color:var(--pri2)">ulang</a>`;
     $('scan-reset2').onclick = ev => { ev.preventDefault(); resetScan(); };
     toast(h.jumlah ? '✅ Terisi — cek dulu sebelum Simpan' : 'Total belum terbaca. Struk panjang? Tambah foto bagian bawah.');
   } catch (err) {} finally { b.disabled = false; b.textContent = SCAN_LABEL(); }
