@@ -521,8 +521,8 @@ function renderForm() {
     const v = String(n || '').toLocaleLowerCase('id-ID');
     if (v === 'tunai' || v.includes('cash')) return 0;
     if (v === 'bank' || /bca|bri|bni|mandiri|btn|bsi|cimb|permata|danamon|jago|blu|seabank|maybank|bank/.test(v)) return 1;
-    if (v === 'dana') return 2;
-    if (v === 'shopeepay') return 3;
+    if (v === 'dana' || v.startsWith('dana ')) return 2;
+    if (v === 'shopeepay' || v.startsWith('shopeepay ')) return 3;
     if (/e.?wallet|gopay|ovo|linkaja|sakuku|isaku/.test(v)) return 4;
     return 5;
   };
@@ -665,15 +665,15 @@ async function prosesFileScan(e) {
     const teksStruk = strukTeks.join(' ').toLocaleLowerCase('id-ID');
     const akunAda = nama => D.akun.find(a => String(a.nama || '').toLocaleLowerCase('id-ID') === nama);
     let sumberTerdeteksi = '';
-    if (/\\bdana\\b/.test(teksStruk) && akunAda('dana')) sumberTerdeteksi = akunAda('dana').nama;
-    else if (/shopee\\s?pay|shopeepay/.test(teksStruk) && akunAda('shopeepay')) sumberTerdeteksi = akunAda('shopeepay').nama;
+    if (/\bdana\b/.test(teksStruk) && akunAda('dana')) sumberTerdeteksi = akunAda('dana').nama;
+    else if (/shopee\s?pay|shopeepay/.test(teksStruk) && akunAda('shopeepay')) sumberTerdeteksi = akunAda('shopeepay').nama;
     else {
       const cocokAkun = D.akun.filter(a => {
         const n = String(a.nama || '').trim().toLocaleLowerCase('id-ID');
         return n.length >= 3 && !['tunai', 'cash', 'bank', 'e-wallet', 'ewallet'].includes(n) && teksStruk.includes(n);
       });
       if (cocokAkun.length === 1) sumberTerdeteksi = cocokAkun[0].nama;
-      else if (/kartu\\s?debit|debit card|mastercard|visa/.test(teksStruk)) {
+      else if (/kartu\s?debit|debit card|mastercard|visa/.test(teksStruk)) {
         const akunBank = D.akun.filter(a => /bank|bca|bri|bni|mandiri|btn|bsi|cimb|permata|danamon|jago|blu|seabank|maybank/i.test(a.nama));
         if (akunBank.length === 1) sumberTerdeteksi = akunBank[0].nama;
       }
