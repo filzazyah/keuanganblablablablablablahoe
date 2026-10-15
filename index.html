@@ -665,8 +665,8 @@ async function prosesFileScan(e) {
     const teksStruk = strukTeks.join(' ').toLocaleLowerCase('id-ID');
     const akunAda = nama => D.akun.find(a => String(a.nama || '').toLocaleLowerCase('id-ID') === nama);
     let sumberTerdeteksi = '';
-    if (/\bdana\b/.test(teksStruk) && D.akun.some(a => /^dana(?:\\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^dana(?:\\s|$)/i.test(String(a.nama || ''))).nama;
-    else if (/shopee\\s?pay|shopeepay/.test(teksStruk) && D.akun.some(a => /^shopeepay(?:\\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^shopeepay(?:\\s|$)/i.test(String(a.nama || ''))).nama;
+    if (/\bdana\b/.test(teksStruk) && D.akun.some(a => /^dana(?:\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^dana(?:\s|$)/i.test(String(a.nama || ''))).nama;
+    else if (/shopee\s?pay|shopeepay/.test(teksStruk) && D.akun.some(a => /^shopeepay(?:\s|$)/i.test(String(a.nama || '')))) sumberTerdeteksi = D.akun.find(a => /^shopeepay(?:\s|$)/i.test(String(a.nama || ''))).nama;
     else {
       const cocokAkun = D.akun.filter(a => {
         const n = String(a.nama || '').trim().toLocaleLowerCase('id-ID');
