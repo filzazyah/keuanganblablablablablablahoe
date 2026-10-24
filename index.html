@@ -514,6 +514,8 @@ function renderForm() {
   $('l-akun').textContent = jenis === 'Pemasukan' ? 'Sumber dana masuk' : (tr ? 'Akun asal' : 'Sumber dana');
   $('f-hint').textContent = tr ? 'Contoh: menabung = Bank → Tabungan Haji. Tarik tunai ATM = Bank → Tunai.' : '';
   const list = D.kategori.filter(k => k.jenis === (jenis === 'Pemasukan' ? 'Pemasukan' : 'Pengeluaran'));
+  // Saat edit: kategori lama yang sudah tidak ada di daftar tetap dipakai, jangan diganti diam-diam.
+  if (transaksiDiedit && editAsli && jenis === editAsli.jenis && kat && kat === editAsli.kategori && !list.some(k => k.nama === kat)) list.push({ nama: kat });
   if (!list.some(k => k.nama === kat)) kat = list.length ? list[0].nama : '';
   $('f-kat').innerHTML = list.map(k => `<button data-k="${esc(k.nama)}" class="${k.nama === kat ? 'on' : ''}"><span class="e">${icon(k.nama)}</span>${esc(k.nama)}</button>`).join('');
   // Urutkan sumber dana: Tunai, Bank, DANA, ShopeePay, e-wallet lain, lalu akun lain.
@@ -546,9 +548,16 @@ function openSheet() {
   bukaSheetHistory();
   setTimeout(() => $('f-jumlah').focus(), 250);
 }
+let editAsli = null;
+// Pastikan akun lama tetap bisa dipilih walau sudah tidak ada di daftar akun.
+function pastikanOpsi(sel, nama) {
+  if (nama && ![...sel.options].some(o => o.value === nama)) { const o = document.createElement('option'); o.textContent = nama; sel.appendChild(o); }
+}
 function bukaEdit(t) {
   transaksiDiedit = t.id; jenis = t.jenis; kat = t.kategori || '';
+  editAsli = { jenis: t.jenis, kategori: t.kategori || '' };
   resetScan(); renderForm();
+  pastikanOpsi($('f-akun'), t.akun); pastikanOpsi($('f-tujuan'), t.akunTujuan);
   $('f-jumlah').value = 'Rp ' + Number(t.jumlah || 0).toLocaleString('id-ID');
   $('f-tgl').value = t.tanggal || D.hariIni; $('f-ket').value = t.keterangan || '';
   $('f-akun').value = t.akun || ''; $('f-tujuan').value = t.akunTujuan || '';
