@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perbaiki aplikasi</title>
+<style>body{font-family:system-ui,sans-serif;background:#fdf2f8;color:#111;margin:0;padding:40px 20px;text-align:center}
+.k{max-width:420px;margin:0 auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+a{display:inline-block;margin-top:18px;background:#be185d;color:#fff;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:700}</style>
+</head><body><div class="k"><h2>🔧 Memperbaiki aplikasi…</h2><p id="s">Menghapus simpanan lama di HP ini.</p></div>
+<script>
+// Halaman darurat: hapus service worker, cache, dan simpanan lokal di HP ini, lalu buka aplikasi lagi.
+// Data keuangan tetap aman di Google Sheets; setelah ini cukup masuk lagi dengan nama + PIN.
+(async function () {
+  const s = document.getElementById('s');
+  try {
+    if ('serviceWorker' in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+  } catch (e) {}
+  try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+  s.innerHTML = '✅ Selesai. Simpanan lama sudah dihapus.<br>Buka aplikasi lalu masuk lagi dengan nama &amp; PIN.<br><a href="./?v=' + Date.now() + '">Buka aplikasi</a>';
+})();
+</script></body></html>
