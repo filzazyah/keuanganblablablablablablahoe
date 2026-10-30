@@ -344,10 +344,17 @@ async function kirim(body) {
   const r = await fetch(window.KEUANGAN_API, { method:'POST', body: JSON.stringify(body), redirect:'follow' });
   return r.json();
 }
+// Server sedang menyimpan data orang lain (kunci) -> coba ulang otomatis, jangan langsung gagal.
+const SIBUK = /sibuk|kunci|lock|timed out|batas waktu/i;
 async function call(fn, ...args) {
   let res;
-  try { res = await kirim({ fn, args, token: TOKEN() }); }
-  catch (e) { toast('⚠️ Tidak ada koneksi ke server'); throw e; }
+  for (let coba = 0; ; coba++) {
+    try { res = await kirim({ fn, args, token: TOKEN() }); }
+    catch (e) { toast('⚠️ Tidak ada koneksi ke server'); throw e; }
+    if (res.ok || res.perluLogin || !SIBUK.test(res.error || '') || coba >= 3) break;
+    toast('⏳ Server sibuk, menyimpan ulang…');
+    await new Promise(r => setTimeout(r, 1500 * (coba + 1)));
+  }
   if (res.perluLogin) { bukaMasuk('masuk'); throw new Error(res.error); }
   if (!res.ok) { toast('⚠️ ' + res.error); throw new Error(res.error); }
   return res.data;
