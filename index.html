@@ -418,7 +418,8 @@ function urutTransaksiTerbaru(items) {
     const waktuA = Date.parse(a.t.createdAt || a.t.created_at || a.t.waktu || '') || 0;
     const waktuB = Date.parse(b.t.createdAt || b.t.created_at || b.t.waktu || '') || 0;
     if (waktuA !== waktuB) return waktuB - waktuA;
-    return b.i - a.i;
+    // Tanpa waktu dicatat: pertahankan urutan dari server (server sudah mengirim yang terbaru lebih dulu).
+    return a.i - b.i;
   }).map(x => x.t);
 }
 const empty = (e, m) => `<div class="empty"><span class="e">${e}</span>${m}</div>`;
